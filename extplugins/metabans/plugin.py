@@ -30,7 +30,7 @@ from datetime import datetime
 import threading
 
 __author__  = 'Courgette'
-__version__ = '0.1'
+__version__ = '0.2'
 
 USER_AGENT =  "B3 Metabans plugin/%s" % __version__
 SUPPORTED_PARSERS = ('bfbc2', 'moh', 'cod4', 'cod5', 'cod6', 'cod7', 'homefront')

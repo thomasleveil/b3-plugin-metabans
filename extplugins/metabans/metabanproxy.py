@@ -14,11 +14,13 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 from pymetabans import Metabans, Player
+import re
 '''Class that makes it easy to make calls to Metabans.com API from B3'''
 
 class UnsupportedGameError(Exception): pass
 
 class MetabansProxy(object):
+    _reColor = re.compile(r'(\^[0-9])')
     group_name = None
     
     def __init__(self, game_name, user_agent='pymetabans'):
@@ -60,6 +62,8 @@ class MetabansProxy(object):
         else:
             raise UnsupportedGameError, "unsupported game %s" % B3_game_name
             
+    def _stripColors(self, text):
+        return re.sub(self._reColor, '', text).strip()
     
     def sight(self, client):
         if client:
@@ -79,7 +83,7 @@ class MetabansProxy(object):
             return self._metabans.mb_assess_player(game_name=self._game_name,
                                                    player_uid=client.guid, 
                                                    assessment_type='none',
-                                                   reason=reason)
+                                                   reason=self._stripColors(reason))
 
     def watch(self, client, duration=None, reason=None):
         """set the 'watch' assessment on the client
@@ -89,7 +93,7 @@ class MetabansProxy(object):
                                                    player_uid=client.guid, 
                                                    assessment_type='watch',
                                                    assessment_length=duration,
-                                                   reason=reason)
+                                                   reason=self._stripColors(reason))
 
     def ban(self, client, duration=None, reason=None):
         """set the 'black' assessment on the client
@@ -99,7 +103,7 @@ class MetabansProxy(object):
                                                    player_uid=client.guid, 
                                                    assessment_type='black',
                                                    assessment_length=duration,
-                                                   reason=reason)
+                                                   reason=self._stripColors(reason))
 
     def protect(self, client, duration=None, reason=None):
         """set the 'white' assessment on the client
@@ -109,5 +113,5 @@ class MetabansProxy(object):
                                                    player_uid=client.guid, 
                                                    assessment_type='white',
                                                    assessment_length=duration,
-                                                   reason=reason)
+                                                   reason=self._stripColors(reason))
 
