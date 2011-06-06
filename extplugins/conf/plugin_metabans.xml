@@ -1,0 +1,41 @@
+<configuration plugin="metabans">
+	<settings name="metabans_account">
+	    <!-- To use this plugin you need to register at http://metabans.com
+	    and report below your Metabans username and API key -->
+	    <set name="username">xxxxxxxx</set>
+	    <set name="api_key">xxxxxxxx</set>
+	    <!-- When you report player sightings to Metabans.com, you can 
+	    associate them to a group. This is usually used to identify the
+	    game server the player was seen on if you have many -->
+	    <set name="group_name"></set>
+	  </settings>
+	<settings name="commands">
+			<!-- !metabanscheck <player> - display Metabans info for player -->
+			<set name="metabanscheck-mbc">20</set>
+			<!-- !metabanswatch <player> [<reason>] - mark a player as watched -->
+			<set name="metabanswatch-mbw">20</set>
+			<!-- !metabansprotect <player> [<reason>] - mark a player as protected -->
+			<set name="metabansprotect-mbp">20</set>
+			<!-- !metabansclear <player> [<reason>] - clear any Metabans mark on the player -->
+			<set name="metabansclear-mbc">20</set>
+	</settings>
+	<settings name="preferences">
+		<!-- message_type defines how you want the ban message to be
+			displayed on your game server :
+				none : won't be displayed
+				normal : normal chat message
+				big : more noticeable message
+		-->
+		<set name="message_type">big</set>
+	</settings>
+	<settings name="messages">
+		<!-- You can use the following keywords in your messages :
+			$clientname
+			$clientguid
+			$reason 
+		-->
+		<!-- ban_message will be displayed to all players when a player is found on
+		Metabans.com banlist -->
+		<set name="ban_message">METABANS $clientname ($clientguid) $reason</set>
+	</settings>
+</configuration>
