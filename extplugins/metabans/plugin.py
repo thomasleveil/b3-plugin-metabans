@@ -22,15 +22,17 @@ from ConfigParser import NoOptionError
 from b3.events import EVT_CLIENT_AUTH, EVT_CLIENT_BAN, EVT_CLIENT_BAN_TEMP, \
     EVT_CLIENT_UNBAN
 from b3.plugin import Plugin
+from datetime import datetime
 from metabanproxy import MetabansProxy
-from pymetabans import *
+from pymetabans import MetabansAuthenticationError, MetabansError, \
+    MetabansException
 import b3
 import b3.output
-from datetime import datetime
+import logging
 import threading
 
 __author__  = 'Courgette'
-__version__ = '0.2'
+__version__ = '0.3'
 
 USER_AGENT =  "B3 Metabans plugin/%s" % __version__
 SUPPORTED_PARSERS = ('bfbc2', 'moh', 'cod4', 'cod5', 'cod6', 'cod7', 'homefront')
@@ -169,14 +171,7 @@ class MetabansPlugin(Plugin):
         if client:
             self.info("sending ban event to Metabans for %s", client.name)
             try:
-                if isinstance(event.data, basestring):
-                    reason = event.data
-                else:            
-                    try:
-                        reason = event.data['reason']
-                    except KeyError:
-                        reason = None
-                self._metabans.ban(client, reason=reason)
+                self._metabans.ban(client, reason=self._getReasonFromEvent(event))
             except MetabansAuthenticationError:
                 self.error("bad METABANS username or api_key. Disabling Metaban plugin")
                 self.disable()
@@ -193,16 +188,9 @@ class MetabansPlugin(Plugin):
                     duration = event.data['duration']
                 except KeyError:
                     duration = 60*60*24 # 1 day in seconds
-                if isinstance(event.data, basestring):
-                    reason = event.data
-                else:            
-                    try:
-                        reason = event.data['reason']
-                    except KeyError:
-                        reason = None
                 self._metabans.ban(client, 
                                    duration=duration,
-                                   reason=reason)
+                                   reason=self._getReasonFromEvent(event))
             except MetabansAuthenticationError:
                 self.error("bad METABANS username or api_key. Disabling Metaban plugin")
                 self.disable()
@@ -215,14 +203,7 @@ class MetabansPlugin(Plugin):
         if client:
             self.info("sending unban event to Metabans for %s", client.name)
             try:
-                if isinstance(event.data, basestring):
-                    reason = event.data
-                else:            
-                    try:
-                        reason = event.data['reason']
-                    except KeyError:
-                        reason = None
-                self._metabans.clear(client, reason=reason)
+                self._metabans.clear(client, reason=self._getReasonFromEvent(event))
             except MetabansAuthenticationError:
                 self.error("bad METABANS username or api_key. Disabling Metaban plugin")
                 self.disable()
@@ -383,6 +364,20 @@ class MetabansPlugin(Plugin):
     # 
     #=======================================================================
 
+    def _getReasonFromEvent(self, event):
+        if isinstance(event.data, basestring):
+            reason = event.data
+        else:
+            try:
+                keyword = '#%s ' % event.data['keyword']
+            except KeyError:
+                keyword = ''
+            try:
+                reason = "%s%s" % (keyword, event.data['reason'])
+            except KeyError:
+                reason = keyword
+        return reason
+
     def _notify_admins(self, player, msg):
         """send a message to each connected admin"""
         clients = self.console.clients.getList()
@@ -448,7 +443,7 @@ class MetabansPlugin(Plugin):
 
 
     def onBlacklisted(self, client, reason=None, inherited_blacklist=None):
-        client.tempban('METABANS BANNED [%s]' % client.name, keyword="METABANS", silent=True, reason=reason)
+        client.kick(keyword="METABANS", silent=True, reason=reason)
         try:
             msg = self.getMessage('ban_message', 
                                   b3.parser.Parser.getMessageVariables(
@@ -471,7 +466,7 @@ class MetabansPlugin(Plugin):
 
 if __name__ == '__main__':
     import time
-    from b3.fake import fakeConsole, superadmin, joe, moderator
+    from b3.fake import fakeConsole, superadmin, joe
     
     metabanlog = logging.getLogger('pymetabans')
     metabanlog.setLevel(logging.DEBUG)
@@ -562,53 +557,47 @@ Usage:
     p._metabans.username = api_username
     p._metabans.apikey = api_key
     
+    p.onStartup()
+    
+    superadmin.connects(0)
+    time.sleep(1)
+    
+    joe._guid = "76561197976827962"
+    
+    
     def test_Command_check():
-        p.onStartup()
-        
         superadmin.connects(0)
         time.sleep(1)
-        
-        joe._guid = "76561197976827962"
         joe.connects(1)
-        
         time.sleep(1)
         superadmin.says('!metabanscheck joe')
-        time.sleep(60)
+    
+    def test_Command_clear():
+        superadmin.says('!metabansclear @%s' % joe.id)
 
     def test_ban_event():
-        p.onStartup()
-        
         superadmin.connects(0)
         time.sleep(1)
-        
-        joe._guid = "76561197976827962"
         joe.connects(1)
-        
         time.sleep(1)
         superadmin.says('!permban joe test_perm_ban')
-        
         time.sleep(3)
         joe.connects(2)
-        
-        time.sleep(60)
 
     def test_tempban_event():
-        p.onStartup()
-        
-        superadmin.connects(0)
-        time.sleep(1)
-        
-        joe._guid = "76561197976827962"
         joe.connects(1)
-        
+        time.sleep(2)
+        superadmin.connects(0)
+        superadmin.says('!unban @%s' % joe.id)
         time.sleep(1)
-        superadmin.says('!tempban joe 1w test_1w_ban')
-        
+        joe.connects(1)
+        time.sleep(1)
+        superadmin.says('!tempban joe 1w racism')
         time.sleep(3)
         joe.connects(2)
         
-        time.sleep(60)
      
     #test_Command_check()
-    test_ban_event()
-    #test_tempban_event()
+    #test_ban_event()
+    test_tempban_event()
+    time.sleep(60)
