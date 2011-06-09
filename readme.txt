@@ -42,6 +42,8 @@ Changelog
 
 0.1 - 2011-06-06
  * first alpha release preview only
+0.4 - 2011-06-09
+ * add a command to send all existing active B3 bans to metabans.com
 
 
 Support

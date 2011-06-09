@@ -126,24 +126,24 @@ class MetabansProxy(object):
                 query_parameters['requests[%d][%s]' % (nb_queries, k)] = v
             nb_queries += 1
         responses = self._metabans._query(query_parameters)
-        nb_error = 0
-        nb_success = 0
+        errors = []
+        success = []
         fetch_times = {}
         for r in responses:
             if 'status' in r and r['status'] == 'OK':
-                nb_success += 1
+                success.append(r)
                 key = r['request']['action']
             else:
-                nb_error += 1
-                key = r['request']['action'] + '_error'
+                errors.append(r)
+                key = r['request']['action'] + '_error_%s' % r['error']['code']
             if not key in fetch_times:
                 fetch_times[key] = []
             fetch_times[key].append(float(r['fetch_time'].rstrip(' s')) * 1000)
-        return (nb_success, nb_error, fetch_times)
+        return (success, errors, fetch_times)
     
 if __name__ == '__main__':
     import logging
-    from datetime import datetime, timedelta
+    from datetime import datetime
     logging.basicConfig(level=logging.DEBUG)
     
     """
@@ -210,14 +210,14 @@ Usage:
     proxy.apikey = api_key
     
     queries = []
-    for i in range(1,60):
+    for i in range(1,100):
         queries.append({
             'action': 'mbo_player_status',
             'game_name': proxy._game_name,
-            'player_uid': 'qsd654sqf_f%s' % i
+            'player_uid': 'qsd654sqf_c%s' % i
         })
     t1 = datetime.now()
-    nb_ok, nb_fail, stats = proxy.send_bulk_queries(queries)
+    oks, fails, stats = proxy.send_bulk_queries(queries)
     print("test took %s" % (datetime.now() - t1))
     for k in stats:
         mean, stdv = meanstdv(stats[k])

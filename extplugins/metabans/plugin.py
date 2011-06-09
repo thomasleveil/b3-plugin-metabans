@@ -19,9 +19,12 @@
 #
 #
 from ConfigParser import NoOptionError
+from b3.clients import Client
 from b3.events import EVT_CLIENT_AUTH, EVT_CLIENT_BAN, EVT_CLIENT_BAN_TEMP, \
     EVT_CLIENT_UNBAN
+from b3.functions import meanstdv
 from b3.plugin import Plugin
+from b3.querybuilder import QueryBuilder
 from datetime import datetime
 from metabanproxy import MetabansProxy
 from pymetabans import MetabansAuthenticationError, MetabansError, \
@@ -32,7 +35,7 @@ import logging
 import threading
 
 __author__  = 'Courgette'
-__version__ = '0.3'
+__version__ = '0.4'
 
 USER_AGENT =  "B3 Metabans plugin/%s" % __version__
 SUPPORTED_PARSERS = ('bfbc2', 'moh', 'cod4', 'cod5', 'cod6', 'cod7', 'homefront')
@@ -358,11 +361,103 @@ class MetabansPlugin(Plugin):
                     client.message("Metabans replied with error %s" % err)
 
 
+    def cmd_metabanssync(self, data=None, client=None, cmd=None):
+        """\
+        send all active bans and tempbans found on your database to Metabans.com
+        """
+        MAX_BANS_PER_CALL = 50
+        def chunks(l, n):
+            for i in range(0, len(l), n):
+                yield l[i:i+n]
+
+        active_bans = self._getAllActiveBans()
+        if len(active_bans) == 0:
+            client.message("no active ban found")
+            return
+        client.message("will now send %s bans to metabans.com" % len(active_bans))
+        try:
+            for bans in chunks(active_bans, MAX_BANS_PER_CALL):
+                oks, fails, stats = self._send_bans(bans)
+                nb_ban_sent = 0
+                for v in oks:
+                    if v['request']['action'] == 'mb_assess_player':
+                        nb_ban_sent += 1
+                client.message("%s bans sent" % nb_ban_sent)
+                for k in stats:
+                    mean, stdv = meanstdv(stats[k])
+                    self.debug("%s (%s calls): (ms) min(%0.1f), max(%0.1f), mean(%0.1f), stddev(%0.1f)", 
+                                  k, len(stats[k]),
+                                  min(stats[k]), max(stats[k]), 
+                                  mean, stdv)
+            client.message("all active bans sent to metabans.com")
+        except MetabansAuthenticationError:
+            self.error("bad METABANS username or api_key. Disabling Metaban plugin")
+            client.message("bad METABANS username or api_key. Disabling Metaban plugin")
+            self.disable()
+        except MetabansError, err:
+            self.error(err)
+            client.message("Metabans replied with error %s" % err)
+
     #=======================================================================
     # 
     # Other
     # 
     #=======================================================================
+
+    def _send_bans(self, bans):
+        queries_bans = []
+        players = set()
+        for ban in bans:
+            if ban.type not in ('Ban', 'TempBan'):
+                continue
+            try:
+                c = self.console.storage.getClient(Client(id=ban.clientId))
+                players.add(c)
+            except KeyError:
+                self.debug("could not find client with id %s" % ban.clientId)
+                continue
+            query = {
+                'action': 'mb_assess_player',
+                'game_name': self._metabans._game_name,
+                'assessment_type': 'black',
+                'player_uid': c.guid
+            }
+            duration_remaining = int(ban.timeExpire - time.time()) 
+            if duration_remaining > 0:
+                query['assessment_length'] = duration_remaining
+            if ban.reason:
+                query['reason'] = self._metabans._stripColors(ban.reason) + ' #test'
+            self.debug("add %r" % query)
+            queries_bans.append(query)
+        queries_players = []
+        for p in players:
+            queries_players.append({
+                'action': 'mb_sight_player',
+                'game_name': self._metabans._game_name,
+                'group_name': self._metabans.group_name,
+                'player_uid': p.guid,
+                'player_name': p.name,
+                'player_ip': p.ip,
+                'alternate_uid': p.pbid,
+            })
+        return self._metabans.send_bulk_queries(queries_players + queries_bans)
+
+
+    def _getAllActiveBans(self):
+        where = QueryBuilder(self.console.storage.db).WhereClause( { 'type' : ('Ban', 'TempBan'), 'inactive' : 0 } )
+        where += ' and ((time_expire = -1 and time_add > %s) or time_expire > %s)' % (time.time() - (3*30*24*60*60), time.time())
+
+        cursor = self.console.storage.query(QueryBuilder(self.console.storage.db).SelectQuery('*', 'penalties', where, 'client_id'))
+        if not cursor:
+            return ()
+
+        penalties = []
+        while not cursor.EOF:
+            penalties.append(self.console.storage._createPenaltyFromRow(cursor.getRow()))
+            cursor.moveNext()
+        cursor.close()
+
+        return penalties
 
     def _getReasonFromEvent(self, event):
         if isinstance(event.data, basestring):
@@ -466,7 +561,8 @@ class MetabansPlugin(Plugin):
 
 if __name__ == '__main__':
     import time
-    from b3.fake import fakeConsole, superadmin, joe
+    import random
+    from b3.fake import fakeConsole, superadmin, joe, FakeClient
     
     metabanlog = logging.getLogger('pymetabans')
     metabanlog.setLevel(logging.DEBUG)
@@ -486,6 +582,8 @@ if __name__ == '__main__':
               <set name="group_name"></set>
             </settings>
           <settings name="commands">
+            <!-- !metabanssync - send all bans found in B3 database to metabans.com -->
+            <set name="metabanssync">100</set>
             <!-- !metabanscheck <player> - display Metabans info for player -->
             <set name="metabanscheck-mbc">20</set>
             <!-- !metabanswatch <player> [<reason>] - mark a player as watched -->
@@ -596,8 +694,21 @@ Usage:
         time.sleep(3)
         joe.connects(2)
         
-     
+    def test_Command_sync(): 
+        p.disable()
+        superadmin.connects(0)
+        for i in range(1, 50):
+            tmp = FakeClient(fakeConsole, name="test_g%s" % i, guid="qsd654sqf_g%s" % i, ip='1.2.3.%d' % i)
+            tmp.connects(i)
+            superadmin.says('!tempban test_g%s %s test' % (i, random.choice(('15m', '1h', '2h', '3d', '1w'))))
+        for i in range(50,60):
+            tmp = FakeClient(fakeConsole, name="test_permban_g%s" % i, guid="qsd654sqf_g%s" % i)
+            tmp.connects(i)
+            superadmin.says('!permban test_permban_g%s test reason %s' % (i, i))
+        p.enable()
+        superadmin.says('!metabanssync')
     #test_Command_check()
     #test_ban_event()
-    test_tempban_event()
+    #test_tempban_event()
+    test_Command_sync()
     time.sleep(60)

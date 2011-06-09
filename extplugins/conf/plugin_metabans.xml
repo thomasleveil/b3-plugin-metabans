@@ -10,6 +10,8 @@
 	    <set name="group_name"></set>
 	  </settings>
 	<settings name="commands">
+			<!-- !metabanssync - send all bans found in B3 database to metabans.com -->
+			<set name="metabanssync">100</set>
 			<!-- !metabanscheck <player> - display Metabans info for player -->
 			<set name="metabanscheck-mbc">20</set>
 			<!-- !metabanswatch <player> [<reason>] - mark a player as watched -->
