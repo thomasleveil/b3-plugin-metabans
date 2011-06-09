@@ -17,9 +17,19 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
+# CHANGELOG :
+#
+# 2.0 - 2011-06-09
+#  * api key is now salted
+#
+from hashlib import sha1
+import logging
+import urllib
+import urllib2
+import uuid
 '''A library that provides a Python interface to the Metabans API'''
 __author__  = 'courgette@bigbrotherbot.net'
-__version__ = '1.0'
+__version__ = '2.0'
 
 try:
     # Python >= 2.6
@@ -31,9 +41,6 @@ except ImportError:
     except ImportError:
         raise ImportError, "Unable to load a json library"
 
-import logging
-import urllib
-import urllib2
 
 log = logging.getLogger('pymetabans')
 
@@ -157,7 +164,10 @@ class Metabans(object):
         query_parameters = {'options': 'mirror,json,profiler'}
         if self.username and self.apikey:
             query_parameters['username'] = self.username
-            query_parameters['apikey'] = self.apikey
+            myUuid = uuid.uuid4()
+            hashedkey = sha1("%s%s" % (myUuid, self.apikey)).hexdigest() 
+            query_parameters['apikey'] = hashedkey
+            query_parameters['salt'] = myUuid
         for k,v in parameters.iteritems():
             query_parameters[k] = v
         log.debug("querying %s with %r", self._service_url, query_parameters)
