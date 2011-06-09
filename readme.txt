@@ -21,6 +21,7 @@ This plugin also provides the following commands :
  - !metabanswatch <player> [<reason>] - mark a player as watched
  - !metabansprotect <player> [<reason>] - mark a player as protected
  - !metabansclear <player> [<reason>] - clear any Metabans mark on the player
+ - !metabanssync - send all active bans and tempbans found on your database to Metabans.com
 
 Visit http://metabans.com for more information
 
