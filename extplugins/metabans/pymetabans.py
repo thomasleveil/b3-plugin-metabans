@@ -154,7 +154,7 @@ class Metabans(object):
         
         If we have multiples responses, then raw json response is returned
         """
-        query_parameters = {'options': 'mirror,json'}
+        query_parameters = {'options': 'mirror,json,profiler'}
         if self.username and self.apikey:
             query_parameters['username'] = self.username
             query_parameters['apikey'] = self.apikey
