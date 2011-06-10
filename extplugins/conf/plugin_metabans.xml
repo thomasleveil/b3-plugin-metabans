@@ -19,7 +19,7 @@
 			<!-- !metabansprotect <player> [<reason>] - mark a player as protected -->
 			<set name="metabansprotect-mbp">20</set>
 			<!-- !metabansclear <player> [<reason>] - clear any Metabans mark on the player -->
-			<set name="metabansclear-mbc">20</set>
+			<set name="metabansclear-mbclr">20</set>
 	</settings>
 	<settings name="preferences">
 		<!-- message_type defines how you want the ban message to be

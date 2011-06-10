@@ -36,7 +36,7 @@ import threading
 import time
 
 __author__  = 'Courgette'
-__version__ = '0.4.1'
+__version__ = '0.4.2'
 
 USER_AGENT =  "B3 Metabans plugin/%s" % __version__
 SUPPORTED_PARSERS = ('bfbc2', 'moh', 'cod4', 'cod5', 'cod6', 'cod7', 'homefront')
@@ -246,8 +246,11 @@ class MetabansPlugin(Plugin):
                     client.message("bad METABANS username or api_key. Disabling Metaban plugin")
                     self.disable()
                 except MetabansError, err:
-                    self.error(err)
-                    client.message("Metabans replied with error %s" % err)
+                    if err.code == 9:
+                        client.message("%s is unknown at Metabans.com" % sclient.name)
+                    else:
+                        self.error(err)
+                        client.message("Metabans replied with error %s" % err)
 
 
     def cmd_metabanswatch(self, data=None, client=None, cmd=None):
@@ -284,8 +287,13 @@ class MetabansPlugin(Plugin):
                     client.message("bad METABANS username or api_key. Disabling Metaban plugin")
                     self.disable()
                 except MetabansError, err:
-                    self.error(err)
-                    client.message("Metabans replied with error %s" % err)
+                    if err.code == 9:
+                        self._metabans.sight(sclient)
+                        client.message("%s was unknown at Metabans.com. try again" % sclient.name)
+                    else:
+                        self.error(err)
+                        client.message("Metabans replied with error %s" % err)
+
 
 
     def cmd_metabansprotect(self, data=None, client=None, cmd=None):
@@ -321,8 +329,13 @@ class MetabansPlugin(Plugin):
                     client.message("bad METABANS username or api_key. Disabling Metaban plugin")
                     self.disable()
                 except MetabansError, err:
-                    self.error(err)
-                    client.message("Metabans replied with error %s" % err)
+                    if err.code == 9:
+                        self._metabans.sight(sclient)
+                        client.message("%s was unknown at Metabans.com. try again" % sclient.name)
+                    else:
+                        self.error(err)
+                        client.message("Metabans replied with error %s" % err)
+
 
 
     def cmd_metabansclear(self, data=None, client=None, cmd=None):
@@ -358,8 +371,12 @@ class MetabansPlugin(Plugin):
                     client.message("bad METABANS username or api_key. Disabling Metaban plugin")
                     self.disable()
                 except MetabansError, err:
-                    self.error(err)
-                    client.message("Metabans replied with error %s" % err)
+                    if err.code == 9:
+                        client.message("%s is unknown at Metabans.com" % sclient.name)
+                    else:
+                        self.error(err)
+                        client.message("Metabans replied with error %s" % err)
+
 
 
     def cmd_metabanssync(self, data=None, client=None, cmd=None):
@@ -445,6 +462,33 @@ class MetabansPlugin(Plugin):
 
 
     def _getAllActiveBans(self):
+        def createPenaltyFromRow(g):
+            if g['type'] == 'Warning':
+                penalty = b3.clients.ClientWarning()
+            elif g['type'] == 'TempBan':
+                penalty = b3.clients.ClientTempBan()
+            elif g['type'] == 'Kick':
+                penalty = b3.clients.ClientKick()
+            elif g['type'] == 'Ban':
+                penalty = b3.clients.ClientBan()
+            elif g['type'] == 'Notice':
+                penalty = b3.clients.ClientNotice()
+            else:
+                penalty = b3.clients.Penalty()
+            penalty.id = int(g['id'])
+            penalty.type    = g['type']
+            penalty.keyword = g['keyword']
+            penalty.reason = g['reason']
+            penalty.data = g['data']
+            penalty.inactive    = int(g['inactive'])
+            penalty.timeAdd  = int(g['time_add'])
+            penalty.timeEdit = int(g['time_edit'])
+            penalty.timeExpire = int(g['time_expire'])
+            penalty.clientId = int(g['client_id'])
+            penalty.adminId = int(g['admin_id'])
+            penalty.duration = int(g['duration'])
+            return penalty
+        
         where = QueryBuilder(self.console.storage.db).WhereClause( { 'type' : ('Ban', 'TempBan'), 'inactive' : 0 } )
         where += ' and ((time_expire = -1 and time_add > %s) or time_expire > %s)' % (time.time() - (3*30*24*60*60), time.time())
 
@@ -454,11 +498,12 @@ class MetabansPlugin(Plugin):
 
         penalties = []
         while not cursor.EOF:
-            penalties.append(self.console.storage._createPenaltyFromRow(cursor.getRow()))
+            penalties.append(createPenaltyFromRow(cursor.getRow()))
             cursor.moveNext()
         cursor.close()
 
         return penalties
+
 
     def _getReasonFromEvent(self, event):
         if isinstance(event.data, basestring):

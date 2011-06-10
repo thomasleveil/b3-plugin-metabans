@@ -43,11 +43,16 @@ Changelog
 
 0.1 - 2011-06-06
  * first alpha release preview only
+ 
 0.4 - 2011-06-09
  * add a command to send all existing active B3 bans to metabans.com
+
 0.4.1 - 2011-06-10
  * fix bug with missing time import
 
+0.4.2 - 2011-06-10
+ * now !metabanssync work with b3 v1.6.1
+ 
 
 Support
 -------

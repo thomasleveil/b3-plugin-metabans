@@ -21,6 +21,8 @@
 #
 # 2.0 - 2011-06-09
 #  * api key is now salted
+# 2.1 - 2011-06-10
+#  * MetabansException now have two attributes : code and message
 #
 from hashlib import sha1
 import logging
@@ -29,7 +31,7 @@ import urllib2
 import uuid
 '''A library that provides a Python interface to the Metabans API'''
 __author__  = 'courgette@bigbrotherbot.net'
-__version__ = '2.0'
+__version__ = '2.1'
 
 try:
     # Python >= 2.6
@@ -45,7 +47,19 @@ except ImportError:
 log = logging.getLogger('pymetabans')
 
 """whenever the Metabans service answers with an error""" 
-class MetabansException(Exception): pass
+class MetabansException(Exception):
+    def __init__(self, value):
+        self.code = 'unknown'
+        self.message = repr(value)
+        try:
+            for k, v in value.iteritems():
+                setattr(self, k, v)
+        except:
+            pass
+    def __str__(self):
+        return "%s #%s: %s" % (self.__class__.__name__, self.code, self.message)
+    def __repr__(self):
+        return "%s(%r)" % (self.__class__.__name__, self.__dict__)
 """whenever the Metabans service answers with a known error""" 
 class MetabansError(MetabansException): pass
 class MetabansAuthenticationError(MetabansError): pass
