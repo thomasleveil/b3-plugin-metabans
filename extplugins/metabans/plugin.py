@@ -36,7 +36,7 @@ import threading
 import time
 
 __author__  = 'Courgette'
-__version__ = '0.4.2'
+__version__ = '0.4.3'
 
 USER_AGENT =  "B3 Metabans plugin/%s" % __version__
 SUPPORTED_PARSERS = ('bfbc2', 'moh', 'cod4', 'cod5', 'cod6', 'cod7', 'homefront')
@@ -444,7 +444,7 @@ class MetabansPlugin(Plugin):
             if duration_remaining > 0:
                 query['assessment_length'] = duration_remaining
             if ban.reason:
-                query['reason'] = self._metabans._stripColors(ban.reason) + ' #test'
+                query['reason'] = self._metabans._stripColors(ban.reason)
             self.debug("add %r" % query)
             queries_bans.append(query)
         queries_players = []

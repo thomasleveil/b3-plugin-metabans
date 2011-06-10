@@ -53,6 +53,9 @@ Changelog
 0.4.2 - 2011-06-10
  * now !metabanssync work with b3 v1.6.1
  
+0.4.3 - 2011-06-10
+ * remove the '#test' that was added to all ban reasons when using !metatbanssync 
+ 
 
 Support
 -------
