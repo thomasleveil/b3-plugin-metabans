@@ -45,6 +45,8 @@ Changelog
  * first alpha release preview only
 0.4 - 2011-06-09
  * add a command to send all existing active B3 bans to metabans.com
+0.4.1 - 2011-06-10
+ * fix bug with missing time import
 
 
 Support

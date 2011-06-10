@@ -33,9 +33,10 @@ import b3
 import b3.output
 import logging
 import threading
+import time
 
 __author__  = 'Courgette'
-__version__ = '0.4'
+__version__ = '0.4.1'
 
 USER_AGENT =  "B3 Metabans plugin/%s" % __version__
 SUPPORTED_PARSERS = ('bfbc2', 'moh', 'cod4', 'cod5', 'cod6', 'cod7', 'homefront')
@@ -560,7 +561,6 @@ class MetabansPlugin(Plugin):
 
 
 if __name__ == '__main__':
-    import time
     import random
     from b3.fake import fakeConsole, superadmin, joe, FakeClient
     
@@ -694,6 +694,21 @@ Usage:
         time.sleep(3)
         joe.connects(2)
         
+    def test_getAllActiveBans(): 
+        p.disable()
+        superadmin.connects(0)
+        for i in range(1, 50):
+            tmp = FakeClient(fakeConsole, name="test_g%s" % i, guid="qsd654sqf_g%s" % i, ip='1.2.3.%d' % i)
+            tmp.connects(i)
+            superadmin.says('!tempban test_g%s %s test' % (i, random.choice(('15m', '1h', '2h', '3d', '1w'))))
+        for i in range(50,60):
+            tmp = FakeClient(fakeConsole, name="test_permban_g%s" % i, guid="qsd654sqf_g%s" % i)
+            tmp.connects(i)
+            superadmin.says('!permban test_permban_g%s test reason %s' % (i, i))
+        p.enable()
+        for i in p._getAllActiveBans():
+            print i
+
     def test_Command_sync(): 
         p.disable()
         superadmin.connects(0)
@@ -707,8 +722,10 @@ Usage:
             superadmin.says('!permban test_permban_g%s test reason %s' % (i, i))
         p.enable()
         superadmin.says('!metabanssync')
+        
     #test_Command_check()
     #test_ban_event()
     #test_tempban_event()
-    test_Command_sync()
+    #test_Command_sync()
+    test_getAllActiveBans()
     time.sleep(60)
