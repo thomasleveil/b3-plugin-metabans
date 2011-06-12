@@ -23,6 +23,8 @@
 #  * api key is now salted
 # 2.1 - 2011-06-10
 #  * MetabansException now have two attributes : code and message
+# 2.1.1 - 2011-06-12
+#  * minor change to the salt and tests
 #
 from hashlib import sha1
 import logging
@@ -31,7 +33,7 @@ import urllib2
 import uuid
 '''A library that provides a Python interface to the Metabans API'''
 __author__  = 'courgette@bigbrotherbot.net'
-__version__ = '2.1'
+__version__ = '2.1.1'
 
 try:
     # Python >= 2.6
@@ -178,7 +180,7 @@ class Metabans(object):
         query_parameters = {'options': 'mirror,json,profiler'}
         if self.username and self.apikey:
             query_parameters['username'] = self.username
-            myUuid = uuid.uuid4()
+            myUuid = uuid.uuid4().hex
             hashedkey = sha1("%s%s" % (myUuid, self.apikey)).hexdigest() 
             query_parameters['apikey'] = hashedkey
             query_parameters['salt'] = myUuid
@@ -214,6 +216,7 @@ class Metabans(object):
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     import pprint
+    import time
 
     from getopt import getopt
     import sys
@@ -251,22 +254,41 @@ Usage:
 
     metabans = Metabans(api_username, api_key)
     
-    pprint.pprint(metabans.mbo_availability_account_name('cucurb'))
+    def test_mbo_availability_account_name():
+        pprint.pprint(metabans.mbo_availability_account_name('cucurb'))
         
-    for data in metabans.mbo_availability_account_name(('cucurb','courgette', 'Courgette')):
-        pprint.pprint(data, indent=4)
-        print '-'*30
-        
-    p = Player('EA_12345BBBBBBBBBBBBBBBBBBBBBBBBBBB', 'test_Mike')
-    pprint.pprint(metabans.mb_sight_player('MOH_2010', p))
-    print('-'*30)
+        for data in metabans.mbo_availability_account_name(('cucurb','courgette', 'Courgette')):
+            pprint.pprint(data, indent=4)
+            print '-'*30
     
-    try:
-        pprint.pprint(metabans.mb_assess_player('MOH_2010', 'EA_12345BBBBBBBBBBBBBBBBBBBBBBBBBBB', 'white', 3600, 'good guy'))
-    except MetabansError, err:
-        print err
-    print('-'*30)
+    def test_mb_sight_player():
+        p = Player('EA_12345BBBBBBBBBBBBBBBBBBBBBBBBBBB', 'test_Mike')
+        pprint.pprint(metabans.mb_sight_player('MOH_2010', p))
+        print('-'*30)
+    
+    def test_mb_assess_player():
+        metabans.mb_sight_player('MOH_2010', Player('EA_12345BBBBBBBBBBBBBBBBBBBBBBBBBBB', 'test_Mike'))
+        try:
+            pprint.pprint(metabans.mb_assess_player('MOH_2010', 'EA_12345BBBBBBBBBBBBBBBBBBBBBBBBBBB', 'white', 3600, 'good guy'))
+        except MetabansError, err:
+            print err
+        print('-'*30)
             
-
-
-    
+    def test_mbo_player_status():
+        #metabans.mb_sight_player('MOH_2010', Player('EA_12345BBBccccccccccccccBBBBBBBBBB', 'test_Michel'))
+        status = metabans.mbo_player_status('MOH_2010', 'EA_12345BBBccccccccccccccBBBBBBBBBB')
+        pprint.pprint(status)
+        
+    def test_ban_expiration():
+        puid = "test_%s" % uuid.uuid4().hex
+        metabans.mb_sight_player('MOH_2010', Player(puid, puid))
+        print(time.strftime("%a, %d %b %Y %H:%M:%S +0000",time.gmtime()))
+        pprint.pprint(metabans.mb_assess_player('MOH_2010', puid, 'black', 20, 'test 20 sec ban'))
+        while True:
+            time.sleep(5)
+            print("-"*50)
+            print(time.strftime("%a, %d %b %Y %H:%M:%S +0000",time.gmtime()))
+            pprint.pprint(metabans.mbo_player_status('MOH_2010', puid))
+        
+    #test_mbo_player_status()
+    test_ban_expiration()

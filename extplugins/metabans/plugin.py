@@ -36,14 +36,10 @@ import threading
 import time
 
 __author__  = 'Courgette'
-__version__ = '0.4.3'
+__version__ = '0.5'
 
 USER_AGENT =  "B3 Metabans plugin/%s" % __version__
 SUPPORTED_PARSERS = ('bfbc2', 'moh', 'cod4', 'cod5', 'cod6', 'cod7', 'homefront')
-
-metabanslog = logging.getLogger('pymetabans')
-metabanslog.setLevel(logging.DEBUG)
-metabanslog.addHandler(b3.output.getInstance())
 
 
 class MetabansPlugin(Plugin):
@@ -131,6 +127,13 @@ class MetabansPlugin(Plugin):
             self.error("This game is not supported by this plugin")
             self.disable()
             return
+        
+        # add pymetabans logs to our current log handler
+        metabanslog = logging.getLogger('pymetabans')
+        metabanslog.setLevel(logging.DEBUG)
+        for handlr in logging.getLogger('output').handlers:
+            metabanslog.addHandler(handlr)
+        
         self.registerEvent(EVT_CLIENT_AUTH)
         self.registerEvent(EVT_CLIENT_BAN)
         self.registerEvent(EVT_CLIENT_BAN_TEMP)
@@ -162,7 +165,7 @@ class MetabansPlugin(Plugin):
             self.info("sending sighting event to Metabans for %s", client.name)
             try:
                 response = self._metabans.sight(client)
-                self._onMetabanResponse(client, response)
+                self._onMetabansResponse(client, response)
             except MetabansAuthenticationError:
                 self.error("bad METABANS username or api_key. Disabling Metaban plugin")
                 self.disable()
@@ -188,18 +191,21 @@ class MetabansPlugin(Plugin):
         if client:
             self.info("sending tempban event to Metabans for %s", client.name)
             try:
+                duration = int(event.data['duration']) * 60
+            except KeyError:
+                # could not get ban duration, setting 30 seconds as a fallback
+                duration = 30
+            self.debug("duration of ban : %s" % duration)
+            if duration >= 30:
                 try:
-                    duration = event.data['duration']
-                except KeyError:
-                    duration = 60*60*24 # 1 day in seconds
-                self._metabans.ban(client, 
-                                   duration=duration,
-                                   reason=self._getReasonFromEvent(event))
-            except MetabansAuthenticationError:
-                self.error("bad METABANS username or api_key. Disabling Metaban plugin")
-                self.disable()
-            except MetabansException, err:
-                self.error(err)
+                    self._metabans.ban(client, 
+                                       duration=duration,
+                                       reason=self._getReasonFromEvent(event))
+                except MetabansAuthenticationError:
+                    self.error("bad METABANS username or api_key. Disabling Metaban plugin")
+                    self.disable()
+                except MetabansException, err:
+                    self.error(err)
 
 
     def onClientUnBan(self, event):
@@ -240,7 +246,7 @@ class MetabansPlugin(Plugin):
                 try:
                     response = self._metabans.check(sclient)
                     self._tellMetabansResponse(client, sclient, response)
-                    self._onMetabanResponse(sclient, response)
+                    self._onMetabansResponse(sclient, response)
                 except MetabansAuthenticationError:
                     self.error("bad METABANS username or api_key. Disabling Metaban plugin")
                     client.message("bad METABANS username or api_key. Disabling Metaban plugin")
@@ -536,7 +542,7 @@ class MetabansPlugin(Plugin):
         """
         self.debug('checking %s (%s)', client, client.guid)
         try:
-            self._onMetabanResponse(client, self._metabans.check(client))
+            self._onMetabansResponse(client, self._metabans.check(client))
         except MetabansAuthenticationError:
             self.error("bad METABANS username or api_key. Disabling Metaban plugin")
             self.disable()
@@ -566,24 +572,24 @@ class MetabansPlugin(Plugin):
                     client.message("reason: %s" % response['reason'])
             else:
                 client.message("%s has no particular status on Metabans" % target_client.name)
-            self._onMetabanResponse(target_client, response)
+            self._onMetabansResponse(target_client, response)
         else:
             client.message("no response from Metabans")
 
-    def _onMetabanResponse(self, client, response):
+    def _onMetabansResponse(self, client, response):
         if response:
-            if response['is_blacklisted'] == True:
-                self.onBlacklisted(client, reason=response['reason'], 
+            if response['is_banned'] == True:
+                self.onMetabans_banned(client, reason=response['reason'], 
                                    inherited_blacklist=response['inherited_blacklist'])
             elif response['is_whitelisted'] == True:
-                self.onWhitelisted(client, reason=response['reason'])
+                self.onMetabans_whitelisted(client, reason=response['reason'])
             elif response['is_watched'] == True:
-                self.onWatched(client, reason=response['reason'])
+                self.onMetabans_watched(client, reason=response['reason'])
         else:
             self.warning("no response from Metabans")
 
 
-    def onBlacklisted(self, client, reason=None, inherited_blacklist=None):
+    def onMetabans_banned(self, client, reason=None, inherited_blacklist=None):
         client.kick(keyword="METABANS", silent=True, reason=reason)
         try:
             msg = self.getMessage('ban_message', 
@@ -597,21 +603,21 @@ class MetabansPlugin(Plugin):
             self.warning("could not find message ban_message in config file")
 
 
-    def onWatched(self, client, reason=None):
+    def onMetabans_watched(self, client, reason=None):
         self._notify_admins(client, "METABANS: %s is under watch for : %s" % (client.name, reason))
 
 
-    def onWhitelisted(self, client, reason=None):
+    def onMetabans_whitelisted(self, client, reason=None):
         self._notify_admins(client, "METABANS: %s is protected" % client)
 
 
 if __name__ == '__main__':
     import random
-    from b3.fake import fakeConsole, superadmin, joe, FakeClient
+    from b3.fake import fakeConsole, superadmin, joe, moderator, FakeClient
     
-    metabanlog = logging.getLogger('pymetabans')
-    metabanlog.setLevel(logging.DEBUG)
-    metabanlog.addHandler(logging.StreamHandler())
+#    metabanlog = logging.getLogger('pymetabans')
+#    metabanlog.setLevel(logging.DEBUG)
+#    metabanlog.addHandler(logging.StreamHandler())
     
     conf1 = b3.config.XmlConfigParser()
     conf1.loadFromString("""
@@ -739,6 +745,23 @@ Usage:
         time.sleep(3)
         joe.connects(2)
         
+    def test_tempban_expiration():
+        joe.connects(1)
+        time.sleep(2)
+        superadmin.connects(0)
+        moderator.connects(2)
+        superadmin.says('!unban @%s' % joe.id)
+        time.sleep(1)
+        joe.connects(1)
+        time.sleep(1)
+        superadmin.says('!tempban joe 1 test_1_minute')
+        for i in range(8):
+            time.sleep(10)
+            print(" -"*20)
+            joe.connects(3)
+            joe.auth()
+
+        
     def test_getAllActiveBans(): 
         p.disable()
         superadmin.connects(0)
@@ -772,5 +795,6 @@ Usage:
     #test_ban_event()
     #test_tempban_event()
     #test_Command_sync()
-    test_getAllActiveBans()
+    #test_getAllActiveBans()
+    test_tempban_expiration()
     time.sleep(60)

@@ -56,6 +56,13 @@ Changelog
 0.4.3 - 2011-06-10
  * remove the '#test' that was added to all ban reasons when using !metatbanssync 
  
+0.5 - 2011-06-12
+ * fix issue with tempban expiration
+ * fix issue where B3 tempban durations which are in munute were not converted 
+   to seconds as metabans expects 
+ * do not send tempban to metabans if duration is 0
+
+
 
 Support
 -------
