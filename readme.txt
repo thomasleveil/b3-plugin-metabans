@@ -62,6 +62,8 @@ Changelog
    to seconds as metabans expects 
  * do not send tempban to metabans if duration is 0
 
+1.0 - 2011-06-12
+ * add support for Battlefield 3
 
 
 Support

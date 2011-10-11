@@ -36,10 +36,10 @@ import threading
 import time
 
 __author__  = 'Courgette'
-__version__ = '0.5'
+__version__ = '1.0'
 
 USER_AGENT =  "B3 Metabans plugin/%s" % __version__
-SUPPORTED_PARSERS = ('bfbc2', 'moh', 'cod4', 'cod5', 'cod6', 'cod7', 'homefront')
+SUPPORTED_PARSERS = ('bfbc2', 'moh', 'cod4', 'cod5', 'cod6', 'cod7', 'homefront', 'bf3')
 
 
 class MetabansPlugin(Plugin):

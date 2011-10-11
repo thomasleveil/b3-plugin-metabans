@@ -60,6 +60,8 @@ class MetabansProxy(object):
             return "COD_7"
         elif B3_game_name == 'homefront':
             return "HOMEFRONT"
+        elif B3_game_name == 'bf3':
+            return "BF_3"
         else:
             raise UnsupportedGameError, "unsupported game %s" % B3_game_name
             
