@@ -62,9 +62,12 @@ Changelog
    to seconds as metabans expects 
  * do not send tempban to metabans if duration is 0
 
-1.0 - 2011-06-12
+1.0 - 2011-10-12
  * add support for Battlefield 3
 
+1.1 - 2011-10-30
+ * send a sighting event to metabans services when a player info changes. Useful
+   for games that provide the PunkBuster id late after player authentication.
 
 Support
 -------

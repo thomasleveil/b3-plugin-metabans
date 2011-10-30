@@ -21,7 +21,7 @@
 from ConfigParser import NoOptionError
 from b3.clients import Client
 from b3.events import EVT_CLIENT_AUTH, EVT_CLIENT_BAN, EVT_CLIENT_BAN_TEMP, \
-    EVT_CLIENT_UNBAN
+    EVT_CLIENT_UNBAN, EVT_CLIENT_UPDATE
 from b3.functions import meanstdv
 from b3.plugin import Plugin
 from b3.querybuilder import QueryBuilder
@@ -36,7 +36,7 @@ import threading
 import time
 
 __author__  = 'Courgette'
-__version__ = '1.0'
+__version__ = '1.1'
 
 USER_AGENT =  "B3 Metabans plugin/%s" % __version__
 SUPPORTED_PARSERS = ('bfbc2', 'moh', 'cod4', 'cod5', 'cod6', 'cod7', 'homefront', 'bf3')
@@ -135,6 +135,7 @@ class MetabansPlugin(Plugin):
             metabanslog.addHandler(handlr)
         
         self.registerEvent(EVT_CLIENT_AUTH)
+        self.registerEvent(EVT_CLIENT_UPDATE)
         self.registerEvent(EVT_CLIENT_BAN)
         self.registerEvent(EVT_CLIENT_BAN_TEMP)
         self.registerEvent(EVT_CLIENT_UNBAN)
@@ -143,7 +144,7 @@ class MetabansPlugin(Plugin):
 
 
     def onEvent(self, event):
-        if event.type == EVT_CLIENT_AUTH:
+        if event.type in (EVT_CLIENT_AUTH, EVT_CLIENT_UPDATE):
             threading.Thread(target=self.onClientAuth, args=(event,)).start()
         elif event.type == EVT_CLIENT_BAN:
             threading.Thread(target=self.onClientBan, args=(event,)).start()
